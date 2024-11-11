@@ -4,7 +4,8 @@ import pandas as pd
 
 # carga de datas
 datas = pd.read_csv(
-    "/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output_nov.csv"
+    r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\output_nov.csv"
+    #"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output_nov.csv"
 )
 # convertir en dataframe
 df = pd.DataFrame(datas)
@@ -91,3 +92,59 @@ dthigd_dda = df[['docdate', 'AUACAE30', 'AUACPB400', 'AUACRIM4F', 'AUACSH1000', 
 dthigd_dda
 
 
+#-- EDA
+dthigd_dda.describe().T
+
+#========================================================================================================================================
+# Ajuste de Datos para statsforecast
+#========================================================================================================================================
+
+#-- Dato de ejemplo para función
+
+def data_sf(df=dthigd_dda, date = 'docdate', y = 'AUACAE30'):
+    df_m = df[[date, y]]
+    df_m.rename(columns={date : 'ds', y :'y'}, inplace=True)
+    df_m['unique_id'] = y
+    return df_m
+
+df_m = data_sf(df=dthigd_dda, date = 'docdate', y = 'AUACAE30')
+df_m
+#========================================================================================================================================
+# Colección de modelos
+#========================================================================================================================================
+from statsforecast import StatsForecast
+
+from statsforecast.models import (
+    AutoARIMA,
+    MSTL,
+    HoltWinters,
+    ADIDA,
+    CrostonClassic as Croston, 
+    IMAPA,
+    TSB,
+    HistoricAverage,
+    DynamicOptimizedTheta as DOT,
+    SeasonalNaive
+)
+
+# Lista de modelos a evaluar
+models = [
+    AutoARIMA(),
+    HoltWinters(),
+    ADIDA(),
+    Croston(),
+    TSB(alpha_d = 0.2, alpha_p = 0.2),
+    SeasonalNaive(season_length=7),
+    HistoricAverage(),
+    DOT(season_length=7)
+]
+
+#-- 
+
+# Isntanciando StatsForecast como sf
+sf = StatsForecast( 
+    df = train,
+    models=models,
+    freq='D', 
+    n_jobs=-1,
+)
