@@ -3,10 +3,14 @@
 
 import pandas as pd
 
+
+
+
 # carga de datas
+
 datas = pd.read_csv(
-    r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\output_nov.csv"
-    #"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output_nov.csv"
+    #r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\output_nov.csv"
+    r"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output_nov.csv"
 )
 # convertir en dataframe
 df = pd.DataFrame(datas)
