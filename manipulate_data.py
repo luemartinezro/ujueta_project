@@ -56,12 +56,7 @@ data.isnull().sum()
 values_list = ((data.isin([0]).sum(axis=1)) / len(data)) * 100
 values_list
 
-# created a separation with percentage of null values
-data.apply( lambda s : s.value_counts().get(key=0,default=0), axis=1)
-    
-    
-    
-    
+# created a separation with percentage of zeros values
 
 datahigh = []
 datamedium = []
@@ -84,3 +79,15 @@ datalow
 len(datahigh)
 len(datamedium)
 len(datalow)
+
+
+#========================================================================================================================================
+# Series con mayor demanda
+#========================================================================================================================================
+
+dthigd_dda = df[['docdate', 'AUACAE30', 'AUACPB400', 'AUACRIM4F', 'AUACSH1000', 'HEELAG1141', 'HEELAG1142KIT', 'HEELPW1770', 
+                 'HEELXID20', 'HEFUFCD12KIT', 'HEFUFCD21', 'HEFUFD52', 'HEFUFG71', 'SOELCSVM501', 'SOELCSVM530', 'SOELSI6140DV', 
+                 'SOFUFW181', 'SOFUFW185', 'SOFUFW33', 'SOFUFW35', 'SOSWP2-517']]
+dthigd_dda
+
+
