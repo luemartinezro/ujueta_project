@@ -1,3 +1,4 @@
+#%%
 ### manipulate data
 
 import pandas as pd
@@ -51,6 +52,12 @@ data.head()
 # check null values
 data.isnull().sum()
 
+
+data[['AUACAE30']].boxplot()
+
+
+#%%
+
 # review null values
 
 
@@ -86,7 +93,7 @@ len(datalow)
 # Series con mayor demanda
 #========================================================================================================================================
 
-dthigd_dda = df[['docdate', 'AUACAE30', 'AUACPB400', 'AUACRIM4F', 'AUACSH1000', 'HEELAG1141', 'HEELAG1142KIT', 'HEELPW1770', 
+dthigd_dda = dff2023[['docdate', 'AUACAE30', 'AUACPB400', 'AUACRIM4F', 'AUACSH1000', 'HEELAG1141', 'HEELAG1142KIT', 'HEELPW1770', 
                  'HEELXID20', 'HEFUFCD12KIT', 'HEFUFCD21', 'HEFUFD52', 'HEFUFG71', 'SOELCSVM501', 'SOELCSVM530', 'SOELSI6140DV', 
                  'SOFUFW181', 'SOFUFW185', 'SOFUFW33', 'SOFUFW35', 'SOSWP2-517']]
 dthigd_dda
@@ -137,7 +144,6 @@ season_length = 7
 # El número de dias que el modelo usará para hacer el forecast 
 window_size = 6*30
 
-
 # Lista de modelos a evaluar
 models = [
     AutoARIMA(season_length=season_length),
@@ -166,7 +172,7 @@ sf = StatsForecast(
 # Cross Validation
 from functools import partial
 from utilsforecast.evaluation import evaluate
-from utilsforecast.losses import mape, mase, mse
+from utilsforecast.losses import mape, mase, mse, smape
 
 crossvaldation_df = sf.cross_validation(
     df=df_m,
@@ -189,28 +195,31 @@ def evaluate_cross_validation(df, metric):
     evals['best_model'] = evals.idxmin(axis=1)
     return evals
 
-evaluation_df = evaluate_cross_validation(crossvaldation_df.reset_index(drop=False), mape)
+evaluation_df = evaluate_cross_validation(crossvaldation_df.reset_index(drop=False), smape)
 evaluation_df.head()
 
-summary_df = evaluation_df.groupby('best_model').size().sort_values().to_frame()
-summary_df.reset_index().columns = ["Model", "Nr. of unique_ids"]
-
-
 #--- Selección del mejor modelo
-fcst_df = sf.forecast(df=df_m, h=horizon)
+fcst_df = sf.forecast(df=df_m, 
+                      h=horizon, 
+                      ## level=[90]
+                     )
 fcst_df.head()
 
+#%%
+sf.plot(df_m,fcst_df)
+
+#%%
+
+#%%
+
 def get_best_model_forecast(forecasts_df, evaluation_df):
-    df = forecasts_df.set_index(['ds']).stack().to_frame().reset_index(level=2) # Wide to long 
-    df.columns = ['model', 'best_model_forecast'] 
-    df = df.join(evaluation_df[['best_model']])
-    df = df.query('model.str.replace("-lo-90|-hi-90", "", regex=True) == best_model').copy()
-    df.loc[:, 'model'] = [model.replace(bm, 'best_model') for model, bm in zip(df['model'], df['best_model'])]
-    df = df.drop(columns='best_model').set_index('model', append=True).unstack()
-    df.columns = df.columns.droplevel()
-    df.columns.name = None
-    df = df.reset_index()
+    col_bm = evaluation_df['best_model'].values[0]
+    df = forecasts_df[col_bm] # Wide to long 
+    df = df.reset_index(drop=False)
+    df.columns = ['unique_id', 'best_model']
     return df
 
-prod_forecasts_df = get_best_model_forecast(forecasts_df = fcst_df, evaluation_df)
+prod_forecasts_df = get_best_model_forecast(forecasts_df = fcst_df, 
+                                            evaluation_df = evaluation_df)
 prod_forecasts_df.head()
+# %%
