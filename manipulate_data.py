@@ -162,5 +162,55 @@ sf = StatsForecast(
     n_jobs=-1,
 )
 
+
+# Cross Validation
+from functools import partial
+from utilsforecast.evaluation import evaluate
+from utilsforecast.losses import mape, mase, mse
+
+crossvaldation_df = sf.cross_validation(
+    df=df_m,
+    h=horizon,
+    step_size=horizon,
+    n_windows=3
+)
+
+crossvaldation_df.head()
+
+def evaluate_cross_validation(df, metric):
+    models = df.drop(columns=['unique_id', 'ds', 'cutoff', 'y'], errors='ignore').columns.tolist()
+    evals = []
+    # Calculate loss for every unique_id and cutoff.    
+    for cutoff in df['cutoff'].unique():
+        eval_ = evaluate(df[df['cutoff'] == cutoff], metrics=[metric], models=models)
+        evals.append(eval_)
+    evals = pd.concat(evals)
+    evals = evals.groupby('unique_id').mean(numeric_only=True) # Averages the error metrics for all cutoffs for every combination of model and unique_id
+    evals['best_model'] = evals.idxmin(axis=1)
+    return evals
+
+evaluation_df = evaluate_cross_validation(crossvaldation_df.reset_index(drop=False), mape)
+evaluation_df.head()
+
+summary_df = evaluation_df.groupby('best_model').size().sort_values().to_frame()
+summary_df.reset_index().columns = ["Model", "Nr. of unique_ids"]
+
+
+#--- Selección del mejor modelo
 fcst_df = sf.forecast(df=df_m, h=horizon)
 fcst_df.head()
+
+def get_best_model_forecast(forecasts_df, evaluation_df):
+    df = forecasts_df.set_index(['ds']).stack().to_frame().reset_index(level=2) # Wide to long 
+    df.columns = ['model', 'best_model_forecast'] 
+    df = df.join(evaluation_df[['best_model']])
+    df = df.query('model.str.replace("-lo-90|-hi-90", "", regex=True) == best_model').copy()
+    df.loc[:, 'model'] = [model.replace(bm, 'best_model') for model, bm in zip(df['model'], df['best_model'])]
+    df = df.drop(columns='best_model').set_index('model', append=True).unstack()
+    df.columns = df.columns.droplevel()
+    df.columns.name = None
+    df = df.reset_index()
+    return df
+
+prod_forecasts_df = get_best_model_forecast(forecasts_df = fcst_df, evaluation_df)
+prod_forecasts_df.head()
