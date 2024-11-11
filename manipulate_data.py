@@ -109,14 +109,15 @@ def data_sf(df=dthigd_dda, date = 'docdate', y = 'AUACAE30'):
 
 df_m = data_sf(df=dthigd_dda, date = 'docdate', y = 'AUACAE30')
 df_m
+df_m.info()
 #========================================================================================================================================
 # Colección de modelos
 #========================================================================================================================================
-from statsforecast import StatsForecast
+from statsforecast import StatsForecast #- Para instanciar los  modelos
 
 from statsforecast.models import (
     AutoARIMA,
-    MSTL,
+    AutoETS,
     HoltWinters,
     ADIDA,
     CrostonClassic as Croston, 
@@ -127,24 +128,39 @@ from statsforecast.models import (
     SeasonalNaive
 )
 
+#-- Parametros
+
+# Número de días en el futuro a pronosticar
+horizon = 30
+# Ventana estacional: es 7 porque tenemos datos diarios
+season_length = 7
+# El número de dias que el modelo usará para hacer el forecast 
+window_size = 6*30
+
+
 # Lista de modelos a evaluar
 models = [
-    AutoARIMA(),
-    HoltWinters(),
+    AutoARIMA(season_length=season_length),
+    AutoETS(season_length=season_length),
+    HoltWinters(season_length=season_length),
     ADIDA(),
     Croston(),
+    IMAPA(),
     TSB(alpha_d = 0.2, alpha_p = 0.2),
-    SeasonalNaive(season_length=7),
+    SeasonalNaive(season_length=season_length),
     HistoricAverage(),
-    DOT(season_length=7)
+    DOT(season_length=season_length)
 ]
 
 #-- 
+# StatsForecast.plot(df_m)
 
-# Isntanciando StatsForecast como sf
+# Instanciando StatsForecast como sf
 sf = StatsForecast( 
-    df = train,
     models=models,
     freq='D', 
     n_jobs=-1,
 )
+
+fcst_df = sf.forecast(df=df_m, h=horizon)
+fcst_df.head()
