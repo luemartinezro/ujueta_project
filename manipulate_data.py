@@ -68,7 +68,7 @@ datamedium = []
 datalow = []
 
 for col in data.columns:
-    missing_percentage = (data[col].apply( lambda s : s.value_counts().get(key=0,default=0))) / len(data) * 100
+    missing_percentage = (data[col][data[col]==0].count()) / len(data) * 100
     if missing_percentage < 30.0:
         datahigh.append(col)
     elif missing_percentage < 50.0:
