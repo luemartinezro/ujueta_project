@@ -56,7 +56,7 @@ def export_forecast_to_csv():
 
             # ececute a sql query
 
-            cur.execute("SELECT * FROM forecast.ventas_diario_pivot")
+            cur.execute("SELECT * FROM forecast.ventas_diario")
 
             # fetch the results
             results = cur.fetchall()

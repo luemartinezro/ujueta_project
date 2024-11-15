@@ -57,6 +57,9 @@ data.head()
 data.isnull().sum()
 
 
+data[['AUACAE30']].boxplot()
+
+
 #%%
 
 # review null values
