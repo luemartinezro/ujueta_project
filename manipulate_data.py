@@ -9,8 +9,8 @@ import pandas as pd
 # carga de datas
 
 datas = pd.read_csv(
-    #r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\output_nov.csv"
-    r"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output_nov.csv"
+    r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\output_nov.csv"
+    #r"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output_nov.csv"
 )
 # convertir en dataframe
 df = pd.DataFrame(datas)
@@ -173,7 +173,7 @@ sf = StatsForecast(
 # Cross Validation
 from functools import partial
 from utilsforecast.evaluation import evaluate
-from utilsforecast.losses import mape, mase, mse, smape
+from utilsforecast.losses import mape, mase, mse, smape, rmse, rmae
 
 crossvaldation_df = sf.cross_validation(
     df=df_m,
@@ -196,7 +196,7 @@ def evaluate_cross_validation(df, metric):
     evals['best_model'] = evals.idxmin(axis=1)
     return evals
 
-evaluation_df = evaluate_cross_validation(crossvaldation_df.reset_index(drop=False), smape)
+evaluation_df = evaluate_cross_validation(crossvaldation_df.reset_index(drop=False), rmse)
 evaluation_df.head()
 
 #--- Selección del mejor modelo
