@@ -1,0 +1,3 @@
+2024-12-08 18:56:06,184:WARNING:C:\Users\Alberto Florez\AppData\Roaming\Python\Python312\site-packages\statsforecast\core.py:494: FutureWarning: In a future version the predictions will have the id as a column. You can set the `NIXTLA_ID_AS_COL` environment variable to adopt the new behavior and to suppress this warning.
+  warnings.warn(
+
