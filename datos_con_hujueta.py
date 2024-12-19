@@ -17,6 +17,7 @@ Contraseña: LmKTXJBXya!14]f9!2k]
 
 """
 
+#%%
 import psycopg2
 import pandas as pd
 import csv
@@ -58,7 +59,7 @@ def export_forecast_to_csv():
 
             cur.execute("""SELECT * 
                            FROM forecast.ventas_diario
-                                AND codigo_articulo IN ('MAEL2G100',	'SOELSI7200XP',	'SOFUFW181',	'SOELSI6140DV',	'SOELSI8180MP',	'SOELSI7160XP',	'HEFUFCD21',	'SOFUFW205CEL',	'SOELSI7130MP',
+                           WHERE  codigo_articulo IN   ('MAEL2G100',	'SOELSI7200XP',	'SOFUFW181',	'SOELSI6140DV',	'SOELSI8180MP',	'SOELSI7160XP',	'HEFUFCD21',	'SOFUFW205CEL',	'SOELSI7130MP',
                                                         'MAEL2G65',	'SOSWSWW2060N',	'HEELCA1024S',	'SOSWSWA2040N',	'AUACEG250',	'SOSWSWA2650',	'AUACSH1000',	'HEELPW2275',	'HEELPW1565',
                                                         'MADUDG701',	'SOFUFW33',	'SOFUFW121',	'AUACPB400',	'SOSWSWP3060',	'HEELBM3514',	'SOELKITSI7160XP',	'AUACBD850',	'SOFUFW125',
                                                         'SOELSI8300MG',	'HEELXID20',	'HEELDH164515',	'HEFUFCD12KIT',	'MAEL2G40',	'SOFUFW185',	'SOELSI9220DV',	'SOELSI7175XP',	'MAEL2G25',
@@ -118,7 +119,8 @@ def export_forecast_to_csv():
             # open a file in the downloads folder
 
             with open(
-                "/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv",
+                r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\input_dmd.csv",
+                #"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv",
                 "w",
                 newline="",
             ) as f:
@@ -141,101 +143,147 @@ def export_forecast_to_csv():
 # Call the function to export data to csv
 export_forecast_to_csv()
 
+#%%
 
 ### manipulate data
 
 import pandas as pd
 
+def sumarizar_a_mensual(df, fecha_col, suma_col, agrupar_por=None):
+    """
+    Función para sumarizar datos diarios a un nivel mensual.
+
+    Parámetros:
+    ----------
+    df : pd.DataFrame
+        El DataFrame de entrada con los datos a procesar.
+    fecha_col : str
+        Nombre de la columna que contiene las fechas.
+    suma_col : str
+        Nombre de la columna cuyos valores se desean sumarizar.
+    agrupar_por : list, optional
+        Lista de columnas adicionales para agrupar (por defecto es None).
+    
+    Retorna:
+    -------
+    pd.DataFrame
+        DataFrame con los datos agregados a nivel mensual.
+    """
+    # Asegurar que la columna de fecha esté en formato datetime
+    df[fecha_col] = pd.to_datetime(df[fecha_col], errors='coerce')
+    
+    # Filtrar filas con fechas válidas
+    df = df.dropna(subset=[fecha_col])
+    
+    # Crear la clave de agrupación mensual
+    df['mes_inicio'] = df[fecha_col].dt.to_period('M').dt.to_timestamp()
+
+    # Configurar las columnas para agrupar
+    group_cols = ['mes_inicio'] + (agrupar_por if agrupar_por else [])
+
+    # Realizar la agrupación y sumarización
+    resultado = (
+        df.groupby(group_cols, as_index=False)[suma_col]
+        .sum()
+    )
+
+    return resultado
+
 # carga de datas
 data = pd.read_csv(
-    "/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv"
+    r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\input_dmd.csv"
+    #"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv"
 )
 # convertir en dataframe
 df = pd.DataFrame(data)
+df.sample(5)
 
+
+#%%
 # review data
 df.shape
 print(df.duplicated().sum())
-print(df.groupby(["docdate", "codigoarticulo"]).size())
+print(df.groupby(["docdate", "codigo_articulo"]).size())
 
 # check unique valus
 df.value_counts()
 
 # Unique to define values
-df["dbpais"].unique()
+# df["dbpais"].unique()
 
 
 # converti docdate to datetime
 df["docdate"] = pd.to_datetime(df["docdate"])
-# garantizar que quantity sea numerico
-df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce")
 
-# create a dataframe only for colombia
-df = df[
-    (df["dbpais"] == "GRUPO_UJUETA")
-]  # & (df["dbpais"]=='VENTAS_INT') & (df["dbpais"]=='UJUETA_TRADING')]
-df
-# pivot el dataframe
-pivot_df = df.pivot_table(
-    index="docdate",
-    columns="codigoarticulo",
-    values="quantity",
-    aggfunc="first",
-    fill_value=0,
-)  # aggfunc='sum'
+df_m_0 = sumarizar_a_mensual(df, 
+    fecha_col='docdate', 
+    suma_col= 'cantidad', 
+    agrupar_por=['codigo_articulo']
+)
 
-# remplazar los valores nulos con 0 (o con otro valor que se apropiado)
-pivot_df = pivot_df.fillna(0)
+df_m_0.rename(columns={'mes_inicio': 'docdate'}, inplace=True)
+print(df_m_0.sample(5))
 
-# check data
-pivot_df
-
-pivot_df.describe()
-
-# check no null values per year
-dff = pivot_df.reset_index(level="docdate", col_level=1)
-
-dff = pd.DataFrame(dff)
-dff.info()
-dff.isnull().sum()
-
-# complete dataset: start 2021-01-01
-dff.shape
-len(dff.notnull().sum())
-
-# Count number of zeros in all columns of Dataframe
-for col in dff.columns:
-    column = dff[col]
-    # Get the count of Zeros in column
-    count = (column == 0).sum()
-    print("Count of zeros in column ", col, " is : ", count)
-
-# filter since 2022-01-01
-dff.docdate
-dff2022 = dff[dff["docdate"] >= "2022-01-01"]
-
-dff2022.shape
-len(dff2022.notnull().sum())
-
-# Count number of zeros in all columns of Dataframe
-for col in dff2022.columns:
-    column = dff2022[col]
-    # Get the count of Zeros in column
-    count = (column == 0).sum()
-    print("Count of zeros in column ", col, " is : ", count)
-
-# filter since 2023-01-01
-
-dff2023 = dff[dff["docdate"] >= "2023-01-01"]
-
-dff2023.shape
-len(dff2023.notnull().sum())
-
-# Count number of zeros in all columns of Dataframe
-for col in dff2023.columns:
-    column = dff2023[col]
-    # Get the count of Zeros in column
-    count = (column == 0).sum()
-    print("Count of zeros in column ", col, " is : ", count)
+#- Chequeo de valores nulos
+print(df_m_0.isnull().sum())
 
 
+#%%
+def contar_meses_no_cero(df, codigo_col, fecha_col, cantidad_col):
+    # Asegurarse de que la columna de fechas esté en formato datetime
+    df[fecha_col] = pd.to_datetime(df[fecha_col])
+    
+    # Crear una columna de mes y año
+    df['mes_anio'] = df[fecha_col].dt.to_period('M')
+    
+    # Filtrar los registros con cantidad diferente de 0
+    df_no_cero = df[df[cantidad_col] != 0]
+    
+    # Contar los meses únicos con ventas diferentes de 0 por producto
+    conteo_meses = df_no_cero.groupby(codigo_col)['mes_anio'].nunique().reset_index()
+    conteo_meses.columns = [codigo_col, 'meses_no_cero']
+    
+    # Generar el ranking basado en el conteo de meses
+    ranking = conteo_meses.sort_values(by='meses_no_cero', ascending=False).reset_index(drop=True)
+    
+    return ranking
+
+# Ejemplo de uso
+ranking_productos = contar_meses_no_cero(df, 'codigo_articulo', 'docdate', 'cantidad')
+print(ranking_productos)
+
+ranking_productos.describe().T
+
+
+def agrupar_por_percentiles(df, columna):
+    # Calcular los percentiles
+    percentil75 = df[columna].quantile(0.75)
+    percentil50 = df[columna].quantile(0.50)
+    
+    # Definir la función de segmentación
+    def segmentar(row):
+        if row[columna] > percentil75:
+            return 'High'
+        elif percentil50 < row[columna] <= percentil75:
+            return 'Medium'
+        else:
+            return 'Low'
+    
+    # Aplicar la segmentación
+    df['segmento'] = df.apply(segmentar, axis=1)
+    
+    return df
+
+# Ejemplo de uso
+ranking_productos = contar_meses_no_cero(df, 'codigo_articulo', 'docdate', 'cantidad')
+ranking_segmentado = agrupar_por_percentiles(ranking_productos, 'meses_no_cero')
+print(ranking_segmentado)
+print(pd.value_counts(ranking_segmentado['segmento']))
+
+#%%
+# exportar datos
+df_m_0.to_csv(
+    r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\ranking_productor_M.csv",
+    index=False
+)
+# %%
