@@ -282,7 +282,7 @@ print(pd.value_counts(ranking_segmentado['segmento']))
 
 #%%
 # exportar datos
-df_m_0.to_csv(
+ranking_segmentado.to_csv(
     r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\ranking_productor_M.csv",
     index=False
 )
