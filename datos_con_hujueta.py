@@ -17,7 +17,8 @@ Contraseña: LmKTXJBXya!14]f9!2k]
 
 """
 
-#%%
+# %%
+
 import psycopg2
 import pandas as pd
 import csv
@@ -39,7 +40,6 @@ else:
     print("Connection established successfully")
 
 
-
 ###
 def export_forecast_to_csv():
     try:
@@ -57,7 +57,8 @@ def export_forecast_to_csv():
 
             # ececute a sql query
 
-            cur.execute("""SELECT * 
+            cur.execute(
+                """SELECT * 
                            FROM forecast.ventas_diario
                            WHERE  codigo_articulo IN   ('MAEL2G100',	'SOELSI7200XP',	'SOFUFW181',	'SOELSI6140DV',	'SOELSI8180MP',	'SOELSI7160XP',	'HEFUFCD21',	'SOFUFW205CEL',	'SOELSI7130MP',
                                                         'MAEL2G65',	'SOSWSWW2060N',	'HEELCA1024S',	'SOSWSWA2040N',	'AUACEG250',	'SOSWSWA2650',	'AUACSH1000',	'HEELPW2275',	'HEELPW1565',
@@ -111,16 +112,17 @@ def export_forecast_to_csv():
                                                         'SOELREPSI8250MG-R12',	'SOELRSS0910A',	'SOELCSVM501IP',	'SOSWG3-316',	'SOSWM2-236',	'SOELRSS0608B',	'SOELRSS1012B',	'SOELRSF0810B',	'SOSWP2-420',
                                                         'SOELRSS0910B',	'SOSWM2-246',	'SOSWG3-312',	'SOSWP2-424',	'SOSWM2-312',	'SOSWM2-321',	'SOSWM2-210',	'SOSWM2-320',	'SOELRSA1012',
                                                         'SOSWM2-328',	'SOELRSS0608A',	'SOSWM2-257',	'SOSWM2-324',	'SOSWM2-325',	'SOSWM2-238',	'SOSWM2-217',	'SOSWM2-218',	'SOSWM2-229')
-                            """) 
-                            
+                            """
+            )
+
             # fetch the results
             results = cur.fetchall()
 
             # open a file in the downloads folder
 
             with open(
-                r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\input_dmd.csv",
-                #"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv",
+                # r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\input_dmd.csv",
+                "/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv",
                 "w",
                 newline="",
             ) as f:
@@ -143,11 +145,12 @@ def export_forecast_to_csv():
 # Call the function to export data to csv
 export_forecast_to_csv()
 
-#%%
+# %%
 
 ### manipulate data
 
 import pandas as pd
+
 
 def sumarizar_a_mensual(df, fecha_col, suma_col, agrupar_por=None):
     """
@@ -163,43 +166,41 @@ def sumarizar_a_mensual(df, fecha_col, suma_col, agrupar_por=None):
         Nombre de la columna cuyos valores se desean sumarizar.
     agrupar_por : list, optional
         Lista de columnas adicionales para agrupar (por defecto es None).
-    
+
     Retorna:
     -------
     pd.DataFrame
         DataFrame con los datos agregados a nivel mensual.
     """
     # Asegurar que la columna de fecha esté en formato datetime
-    df[fecha_col] = pd.to_datetime(df[fecha_col], errors='coerce')
-    
+    df[fecha_col] = pd.to_datetime(df[fecha_col], errors="coerce")
+
     # Filtrar filas con fechas válidas
     df = df.dropna(subset=[fecha_col])
-    
+
     # Crear la clave de agrupación mensual
-    df['mes_inicio'] = df[fecha_col].dt.to_period('M').dt.to_timestamp()
+    df["mes_inicio"] = df[fecha_col].dt.to_period("M").dt.to_timestamp()
 
     # Configurar las columnas para agrupar
-    group_cols = ['mes_inicio'] + (agrupar_por if agrupar_por else [])
+    group_cols = ["mes_inicio"] + (agrupar_por if agrupar_por else [])
 
     # Realizar la agrupación y sumarización
-    resultado = (
-        df.groupby(group_cols, as_index=False)[suma_col]
-        .sum()
-    )
+    resultado = df.groupby(group_cols, as_index=False)[suma_col].sum()
 
     return resultado
 
+
 # carga de datas
 data = pd.read_csv(
-    r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\input_dmd.csv"
-    #"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv"
+    # r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\input_dmd.csv"
+    "/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv"
 )
 # convertir en dataframe
 df = pd.DataFrame(data)
 df.sample(5)
 
 
-#%%
+# %%
 # review data
 df.shape
 print(df.duplicated().sum())
@@ -215,41 +216,42 @@ df.value_counts()
 # converti docdate to datetime
 df["docdate"] = pd.to_datetime(df["docdate"])
 
-df_m_0 = sumarizar_a_mensual(df, 
-    fecha_col='docdate', 
-    suma_col= 'cantidad', 
-    agrupar_por=['codigo_articulo']
+df_m_0 = sumarizar_a_mensual(
+    df, fecha_col="docdate", suma_col="cantidad", agrupar_por=["codigo_articulo"]
 )
 
-df_m_0.rename(columns={'mes_inicio': 'docdate'}, inplace=True)
+df_m_0.rename(columns={"mes_inicio": "docdate"}, inplace=True)
 print(df_m_0.sample(5))
 
-#- Chequeo de valores nulos
+# - Chequeo de valores nulos
 print(df_m_0.isnull().sum())
 
 
-#%%
+# %%
 def contar_meses_no_cero(df, codigo_col, fecha_col, cantidad_col):
     # Asegurarse de que la columna de fechas esté en formato datetime
     df[fecha_col] = pd.to_datetime(df[fecha_col])
-    
+
     # Crear una columna de mes y año
-    df['mes_anio'] = df[fecha_col].dt.to_period('M')
-    
+    df["mes_anio"] = df[fecha_col].dt.to_period("M")
+
     # Filtrar los registros con cantidad diferente de 0
     df_no_cero = df[df[cantidad_col] != 0]
-    
+
     # Contar los meses únicos con ventas diferentes de 0 por producto
-    conteo_meses = df_no_cero.groupby(codigo_col)['mes_anio'].nunique().reset_index()
-    conteo_meses.columns = [codigo_col, 'meses_no_cero']
-    
+    conteo_meses = df_no_cero.groupby(codigo_col)["mes_anio"].nunique().reset_index()
+    conteo_meses.columns = [codigo_col, "meses_no_cero"]
+
     # Generar el ranking basado en el conteo de meses
-    ranking = conteo_meses.sort_values(by='meses_no_cero', ascending=False).reset_index(drop=True)
-    
+    ranking = conteo_meses.sort_values(by="meses_no_cero", ascending=False).reset_index(
+        drop=True
+    )
+
     return ranking
 
+
 # Ejemplo de uso
-ranking_productos = contar_meses_no_cero(df, 'codigo_articulo', 'docdate', 'cantidad')
+ranking_productos = contar_meses_no_cero(df, "codigo_articulo", "docdate", "cantidad")
 print(ranking_productos)
 
 ranking_productos.describe().T
@@ -259,31 +261,33 @@ def agrupar_por_percentiles(df, columna):
     # Calcular los percentiles
     percentil75 = df[columna].quantile(0.75)
     percentil50 = df[columna].quantile(0.50)
-    
+
     # Definir la función de segmentación
     def segmentar(row):
         if row[columna] > percentil75:
-            return 'High'
+            return "High"
         elif percentil50 < row[columna] <= percentil75:
-            return 'Medium'
+            return "Medium"
         else:
-            return 'Low'
-    
+            return "Low"
+
     # Aplicar la segmentación
-    df['segmento'] = df.apply(segmentar, axis=1)
-    
+    df["segmento"] = df.apply(segmentar, axis=1)
+
     return df
 
-# Ejemplo de uso
-ranking_productos = contar_meses_no_cero(df, 'codigo_articulo', 'docdate', 'cantidad')
-ranking_segmentado = agrupar_por_percentiles(ranking_productos, 'meses_no_cero')
-print(ranking_segmentado)
-print(pd.value_counts(ranking_segmentado['segmento']))
 
-#%%
+# Ejemplo de uso
+ranking_productos = contar_meses_no_cero(df, "codigo_articulo", "docdate", "cantidad")
+ranking_segmentado = agrupar_por_percentiles(ranking_productos, "meses_no_cero")
+print(ranking_segmentado)
+print(pd.value_counts(ranking_segmentado["segmento"]))
+
+# %%
 # exportar datos
 ranking_segmentado.to_csv(
-    r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\ranking_productor_M.csv",
-    index=False
+    # r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\ranking_productor_M.csv",
+    r"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/ranking_productor_M.csv",
+    index=False,
 )
 # %%
