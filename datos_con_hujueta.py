@@ -121,8 +121,8 @@ def export_forecast_to_csv():
             # open a file in the downloads folder
 
             with open(
-                # r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\input_dmd.csv",
-                "/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv",
+                r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\input_dmd.csv",
+                #"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv",
                 "w",
                 newline="",
             ) as f:
@@ -192,8 +192,8 @@ def sumarizar_a_mensual(df, fecha_col, suma_col, agrupar_por=None):
 
 # carga de datas
 data = pd.read_csv(
-    # r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\input_dmd.csv"
-    "/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv"
+     r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\input_dmd.csv"
+    #"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/output.csv"
 )
 # convertir en dataframe
 df = pd.DataFrame(data)
@@ -277,17 +277,63 @@ def agrupar_por_percentiles(df, columna):
     return df
 
 
+
 # Ejemplo de uso
 ranking_productos = contar_meses_no_cero(df, "codigo_articulo", "docdate", "cantidad")
 ranking_segmentado = agrupar_por_percentiles(ranking_productos, "meses_no_cero")
 print(ranking_segmentado)
 print(pd.value_counts(ranking_segmentado["segmento"]))
 
+
+
+#%%
+def segmentacion_abc(df, cantidad_col):
+    # Calcular la cantidad total por producto
+    df_agrupado = df.groupby('codigo_articulo')[cantidad_col].sum().reset_index()
+    df_agrupado.columns = ['codigo_articulo', 'cantidad_total']
+    
+    # Ordenar los productos por cantidad total en orden descendente
+    df_agrupado = df_agrupado.sort_values(by='cantidad_total', ascending=False).reset_index(drop=True)
+    
+    # Calcular el porcentaje acumulado de la cantidad total
+    df_agrupado['porcentaje_acumulado'] = df_agrupado['cantidad_total'].cumsum() / df_agrupado['cantidad_total'].sum() * 100
+    
+    # Definir la función de segmentación ABC
+    def segmentar(row):
+        if row['porcentaje_acumulado'] <= 80:
+            return 'A'
+        elif row['porcentaje_acumulado'] <= 95:
+            return 'B'
+        else:
+            return 'C'
+    
+    # Aplicar la segmentación
+    df_agrupado['segmentoABC'] = df_agrupado.apply(segmentar, axis=1)
+    
+    return df_agrupado
+
+# Ejemplo de uso
+df_segmentado = segmentacion_abc(df, 'cantidad')
+
+print(df_segmentado)
+print(pd.value_counts(df_segmentado["segmentoABC"]))
+
+
 # %%
+
+# Realizar el merge
+df_merged = pd.merge(df_segmentado, ranking_segmentado, on='codigo_articulo', how='left')
+
+# Mostrar los primeros registros para verificar
+print(df_merged.head())
+
+
+
 # exportar datos
-ranking_segmentado.to_csv(
-    # r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\ranking_productor_M.csv",
-    r"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/ranking_productor_M.csv",
+df_merged.to_csv(
+    r"C:\Users\Alberto Florez\OneDrive\Documentos\GitHub\ranking_productor_M.csv",
+    #"/home/usuario/Escritorio/Consultorias_Empresariales/Ujueta/Datos/ranking_productor_M.csv",
     index=False,
 )
+
 # %%
