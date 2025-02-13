@@ -1,11 +1,8 @@
 #%%
-#-- Paquetes
-
 import pandas as pd
 from statsforecast import StatsForecast
 from statsforecast.models import AutoARIMA
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error, mean_absolute_error
 
 #-- Funciones
 
@@ -19,6 +16,21 @@ def leer_archivo_excel(ruta_archivo, hoja=None):
     """
     df = pd.read_excel(ruta_archivo, sheet_name=hoja)
     return df
+
+def calcular_metricas(y_true, y_pred):
+    """
+    Calcula RMSE, MAE, MAPE y SMAPE.
+    
+    :param y_true: Valores reales.
+    :param y_pred: Valores predichos.
+    :return: Diccionario con las métricas.
+    """
+    rmse = mean_squared_error(y_true, y_pred)
+    mae = mean_absolute_error(y_true, y_pred)
+    mape = mean_absolute_percentage_error(y_true, y_pred)
+    smape = 100 * (2 * abs(y_true - y_pred) / (abs(y_true) + abs(y_pred))).mean()
+    
+    return {'RMSE': rmse, 'MAE': mae, 'MAPE': mape, 'SMAPE': smape}
 
 #-- Lectura de datos 
 ruta_archivo = '../Ejercicio Forecast.xlsx'
@@ -47,56 +59,59 @@ print(df.head())
 #%% Filtrar codigoarticulo con la misma cantidad de filas
 conteo_filas = df.groupby('unique_id').size().reset_index(name='conteo')
 max_filas = conteo_filas['conteo'].max()
-print(conteo_filas)
-#df_filtrado = df[df['unique_id'].isin(conteo_filas[conteo_filas['conteo'] == max_filas]['unique_id'])]
-
-df_filtrado = df[df['unique_id'].isin(['AUACSH1000', 'HEELAG1141', 
-'MAEL2G65', 'SOELCSVM510', 'SOFUFW181'])]
+df_filtrado = df[df['unique_id'].isin(conteo_filas[conteo_filas['conteo'] == max_filas]['unique_id'])]
 
 print(df_filtrado.head())
 
-#%% Filtrado de Items
-# Preparar los datos para el modelo
-df_filtrado = df_filtrado.sort_values(by=['unique_id', 'ds'])
-df_filtrado = df_filtrado.fillna(0)
+#%% Partición en train y test
+# Definir el tamaño del conjunto de prueba
+test_size = 6  # Ajusta según sea necesario
 
+# Crear conjuntos de entrenamiento y prueba
+train = df_filtrado.groupby('unique_id').apply(lambda x: x.iloc[:-test_size]).reset_index(drop=True)
+test = df_filtrado.groupby('unique_id').apply(lambda x: x.iloc[-test_size:]).reset_index(drop=True)
+
+print(train.head())
+print(test.head())
 
 #%% Entrenamiento del modelo con StatsForecast
+# Preparar los datos para el modelo
+train = train.sort_values(by=['unique_id', 'ds'])
+train = train.fillna(0)
+
+X_test = test.drop(columns='y').sort_values(by=['unique_id', 'ds'])
 # Crear una instancia del modelo AutoARIMA
+models = [AutoARIMA(season_length=12)]  # Ajusta el parámetro season_length según sea necesario
 
-# Extract dates for train and test set 
-dates = df_filtrado['ds'].unique()
-dtrain = dates[:-6]
-dtest = dates[-6:]
-
-train = df_filtrado.query('ds in @dtrain')
-X_test = df_filtrado.query('ds in @dtest') 
-X_test.drop('y', axis=1, inplace=True, errors='ignore')
-y_test = df_filtrado.query('ds in @dtest')[['ds','unique_id', 'y']].copy()
-
-models = [AutoARIMA(season_length = 12)]
+# Crear una instancia de StatsForecast
 sf = StatsForecast(
     models=models, 
-    freq='MS', 
-    n_jobs=-1
+    freq='M', 
+    n_jobs=1,
 )
 
-fcst = sf.forecast(df=train, h=6, X_df=X_test, level=[95])
-fcst = fcst.reset_index()
+
+#-- Entrenar el modelo
+horizon = test_size
+level = [95]
+
+fcst = sf.forecast(df=train, h=horizon, X_df=X_test, level=level)
+fcst.reset_index(drop=False, inplace=True)
 fcst.head()
 
+#%% Calcular las métricas por unique_id
+resultados = []
 
-# %%
-StatsForecast.plot(df_filtrado, fcst, max_insample_length=6*2)
+for unique_id in test['unique_id'].unique():
+    y_true = test[test['unique_id'] == unique_id]['y']
+    y_pred = fcst[fcst['unique_id'] == unique_id]['AutoARIMA']
+    
+    metricas = calcular_metricas(y_true, y_pred)
+    metricas['unique_id'] = unique_id
+    resultados.append(metricas)
 
-# %% MAE 
-res = y_test.merge(fcst, how='left', on=['unique_id', 'ds'])
-mae = abs(res['y']-res['AutoARIMA']).mean()
-print('The MAE with exogenous regressors is '+str(round(mae,2)))
+df_metricas = pd.DataFrame(resultados)
+print(df_metricas)
 
-#-- Calcular el MAPE
+#%% Crear tabla exógena para los pronósticos futuros
 
-mape = mean_absolute_percentage_error(res['y'], res['AutoARIMA'])
-print(f'MAPE: {mape:.2%}')
-
-# %%
